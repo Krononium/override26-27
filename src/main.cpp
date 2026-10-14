@@ -6,8 +6,8 @@ using namespace pros;
 using namespace competition;
 
 Controller master(pros::E_CONTROLLER_MASTER);
-MotorGroup leftMG({-1, -2});    // Creates a motor group with forwards ports 1 & 3 and reversed port 2
-MotorGroup rightMG({3, 4});  // Creates a motor group with forwards port 5 and reversed ports 4 & 6
+MotorGroup leftMG({-1, -2});    // Creates a motor group with reversed ports 1 & 2
+MotorGroup rightMG({3, 4});  // Creates a motor group with forwards port 3 & 4
 int maxVel = 600;
 /**
  * A callback function for LLEMU's center button.
