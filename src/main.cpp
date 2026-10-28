@@ -6,10 +6,10 @@ using namespace pros;
 using namespace competition;
 
 Controller master(pros::E_CONTROLLER_MASTER);
-MotorGroup leftMG({-1, -2});    // Creates a motor group with reversed ports 1 & 2
-MotorGroup rightMG({3, 4});  // Creates a motor group with forwards port 3 & 4
+MotorGroup leftMG({3, 4});    // Creates a motor group with forwards ports 1 & 3 and reversed port 2
+MotorGroup rightMG({-1, -2});  // Creates a motor group with forwards port 5 and reversed ports 4 & 6
 int maxVel = 600;
-/**
+/**  
  * A callback function for LLEMU's center button.
  *
  * When this callback is fired, it will toggle line 2 of the LCD text between
@@ -35,7 +35,6 @@ void on_center_button() {
 void initialize() {
 	pros::lcd::initialize();
 	pros::lcd::set_text(1, "Hello PROS User!");
-	autonomous();
 	
 }
 
@@ -88,9 +87,9 @@ void passiveMove(int dir){
  */
 
 void autonomous() {
-	passiveMove(1);
-	delay(1000);
-	passiveMove(0);
+	// passiveMove(1);
+	// delay(1000);
+	// passiveMove(0);
 }
 
 //Contains the primary control scheme (arcade style) for driver control to be used as a
@@ -98,10 +97,10 @@ void autonomous() {
 void twoStick(){
 	while (true) {
 		// Arcade control scheme
-		double leftStick = master.get_analog(E_CONTROLLER_ANALOG_LEFT_Y);    // Gets amount forward/backward from left joystick
+		double leftStick = -master.get_analog(E_CONTROLLER_ANALOG_LEFT_Y);    // Gets amount forward/backward from left joystick
 		double rightStick = master.get_analog(E_CONTROLLER_ANALOG_RIGHT_X);  // Gets the turn left/right from right joystick
-		leftMG.move_voltage(leftStick - rightStick);                      // Sets left motor voltage
-		rightMG.move_voltage(leftStick + rightStick);                     // Sets right motor voltage
+		leftMG.move_voltage((leftStick - rightStick) * 94.48818898);                      // Sets left motor voltage
+		rightMG.move_voltage((leftStick + rightStick) * 94.48818898);                     // Sets right motor voltage
 		pros::delay(20);                               // Run for 20 ms then update
 	}
 }
