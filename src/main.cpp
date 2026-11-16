@@ -6,10 +6,15 @@ using namespace pros;
 using namespace competition;
 
 Controller master(pros::E_CONTROLLER_MASTER);
-MotorGroup leftMG({3, 4});    // Creates a motor group with forwards ports 1 & 3 and reversed port 2
-MotorGroup rightMG({-1, -2});  // Creates a motor group with forwards port 5 and reversed ports 4 & 6
+MotorGroup rightMG({-1, -2});   // Creates a motor group with reversed ports 1 & 2
+MotorGroup leftMG({18, 19});  // Creates a motor group with forwards port 18 & 19
+
+Motor inOutMotor({17}); // Creates a motor with port 17 to handle intake/extake
+Motor cascadeLiftMotor({-16}); // Creates a motor with a reversed port 16 to handle the cascade lift. 
+Motor clawMotor({10});  // Creates a motor with port 10 to handle the claw
+
 int maxVel = 600;
-/**  
+/**
  * A callback function for LLEMU's center button.
  *
  * When this callback is fired, it will toggle line 2 of the LCD text between
@@ -34,8 +39,7 @@ void on_center_button() {
  */
 void initialize() {
 	pros::lcd::initialize();
-	pros::lcd::set_text(1, "Hello PROS User!");
-	
+	pros::lcd::set_text(1, "Hello PROS User!");	
 }
 
 /**
@@ -105,6 +109,59 @@ void twoStick(){
 	}
 }
 
+// Function that handles intake/extake
+void inOut() { 
+	while (true) {
+		if (master.get_digital(E_CONTROLLER_DIGITAL_R2)) { // Intakes while holding R2 
+			inOutMotor.move_velocity(maxVel / 2.5); // Sets the forward voltage
+		
+		} else if (master.get_digital(E_CONTROLLER_DIGITAL_R1)) { // Extakes while holding R1
+			inOutMotor.move_velocity(-(maxVel / 2.5)); // Sets the backwards voltage
+
+		} else { // If neither buttons are being pressed
+			inOutMotor.move_velocity(0); // Stops the motor
+		}
+		pros::delay(20);
+		
+	}
+}
+
+// Function to handle the raising and lowering of the cascadeLift
+void cascadeLift() {
+	while (true) {
+		if (master.get_digital(E_CONTROLLER_DIGITAL_X)) { // Moves cascade lift up when holding the x button
+			cascadeLiftMotor.move_velocity(maxVel / 10); // Sets velocity of the cascade lift to go up
+
+		} else if (master.get_digital(E_CONTROLLER_DIGITAL_B)) { // Moves cascade lift down when holding the b button
+			cascadeLiftMotor.move_velocity(-(maxVel / 10)); // Sets velocity of the cascade lift to go down
+
+		} else {
+			cascadeLiftMotor.move_velocity(0); // Stops the motor
+		}
+		pros::delay(20);
+	}
+}
+
+void claw() {
+	while (true) {
+		/*
+		if (master.get_digital(BUTTON NEEDED FOR UP)) {
+			clawMotor.move_velocity(maxVel / 10);
+
+
+		} else if (master.get_digital(BUTTON NEEDED FOR DOWN)) {
+		 	clawMotor.move_velocity(-(maxVel / 10));
+
+		} else {
+		 	clawMotor.move_velocity(0);
+		}
+		
+		*/
+
+		pros::delay(20);
+	}
+}
+
 /**
  * Runs the operator control code. This function will be started in its own task
  * with the default priority and stack size whenever the robot is enabled via
@@ -118,9 +175,9 @@ void twoStick(){
  * operator control task will be stopped. Re-enabling the robot will restart the
  * task, not resume it from where it left off.
  */
-
-
-
 void opcontrol() {
 	Task movement(twoStick);
+	Task intakeExtake(inOut);
+	Task cascadeHandling(cascadeLift);
+	Task clawHandling(claw);
 }
