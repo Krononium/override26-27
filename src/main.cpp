@@ -9,9 +9,10 @@ Controller master(pros::E_CONTROLLER_MASTER);
 MotorGroup rightMG({-1, -2});   // Creates a motor group with reversed ports 1 & 2
 MotorGroup leftMG({18, 19});  // Creates a motor group with forwards port 18 & 19
 
-Motor inOutMotor({17}); // Creates a motor with port 17 to handle intake/extake
-Motor cascadeLiftMotor({-16}); // Creates a motor with a reversed port 16 to handle the cascade lift. 
+Motor inOutMotor({-17}); // Creates a motor with port 17 to handle intake/extake
+Motor cascadeLiftMotor({16}); // Creates a motor with port 16 to handle the cascade lift. 
 Motor clawMotor({10});  // Creates a motor with port 10 to handle the claw
+Motor clawRotationMotor({-9}); // Creates a motor with reversed port 9 to handle the claw
 
 int maxVel = 600;
 /**
@@ -126,14 +127,14 @@ void inOut() {
 	}
 }
 
-// Function to handle the raising and lowering of the cascadeLift
+// Function to handle the raising and lowering of the cascade lift
 void cascadeLift() {
 	while (true) {
 		if (master.get_digital(E_CONTROLLER_DIGITAL_X)) { // Moves cascade lift up when holding the x button
-			cascadeLiftMotor.move_velocity(maxVel / 10); // Sets velocity of the cascade lift to go up
+			cascadeLiftMotor.move_velocity(maxVel * 1.5); // Sets velocity of the cascade lift to go up
 
 		} else if (master.get_digital(E_CONTROLLER_DIGITAL_B)) { // Moves cascade lift down when holding the b button
-			cascadeLiftMotor.move_velocity(-(maxVel / 10)); // Sets velocity of the cascade lift to go down
+			cascadeLiftMotor.move_velocity(-(maxVel * 1.5)); // Sets velocity of the cascade lift to go down
 
 		} else {
 			cascadeLiftMotor.move_velocity(0); // Stops the motor
@@ -142,24 +143,61 @@ void cascadeLift() {
 	}
 }
 
+// Function to handle the claw
 void claw() {
 	while (true) {
-		/*
-		if (master.get_digital(BUTTON NEEDED FOR UP)) {
-			clawMotor.move_velocity(maxVel / 10);
+		if (master.get_digital(E_CONTROLLER_DIGITAL_L2)) { // If button L2 is being held down
+			clawMotor.move_velocity(maxVel / 3); // Set forward velocity for the claw motor
 
+		} else if (master.get_digital(E_CONTROLLER_DIGITAL_L1)) { // If button L1 is being held down
+		 	clawMotor.move_velocity(-(maxVel / 3)); // Set backwards velocity for the claw motor
 
-		} else if (master.get_digital(BUTTON NEEDED FOR DOWN)) {
-		 	clawMotor.move_velocity(-(maxVel / 10));
-
-		} else {
-		 	clawMotor.move_velocity(0);
+		} else { // If neither button is being held down
+		 	clawMotor.move_velocity(0); // Stops the motor
 		}
 		
-		*/
-
 		pros::delay(20);
 	}
+}
+
+// Function to handle the rotation of the claw
+void clawRotation() {
+	/* USE THIS IF WE WANT MANUAL CLAW
+	
+	while (true) {
+		if (master.get_digital(E_CONTROLLER_DIGITAL_UP)) { // If d-pad button up is being pressed
+			clawRotationMotor.move_velocity(maxVel / 15); // Sets forward velocity for the claw rotation motor
+
+		} else if (master.get_digital(E_CONTROLLER_DIGITAL_DOWN)) { // If d-pad button down is being pressed
+			clawRotationMotor.move_velocity(-(maxVel / 15)); // Sets backwards velocity for the claw rotation motor
+
+		} else { // If neither button is being held down
+			clawRotationMotor.move_velocity(0); // Stops the claw rotation motor
+		}
+
+		pros::delay(20);
+	 } */
+
+	bool clawUp = false;
+
+	while (true) {
+		if (master.get_digital(E_CONTROLLER_DIGITAL_UP) && !clawUp) {
+			clawRotationMotor.move_velocity(maxVel / 13);
+			pros::delay(500);
+			clawRotationMotor.move_velocity(0);
+
+			clawUp = true;
+
+		} else if (master.get_digital(E_CONTROLLER_DIGITAL_DOWN) && clawUp) {
+			clawRotationMotor.move_velocity(-(maxVel / 13));
+			pros::delay(450);
+			clawRotationMotor.move_velocity(0);
+
+			clawUp = false;
+		}
+		pros::delay(20);
+	}
+
 }
 
 /**
@@ -180,4 +218,5 @@ void opcontrol() {
 	Task intakeExtake(inOut);
 	Task cascadeHandling(cascadeLift);
 	Task clawHandling(claw);
+	Task clawRotationHandling(clawRotation);
 }
