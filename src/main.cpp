@@ -114,10 +114,10 @@ void twoStick(){
 void inOut() { 
 	while (true) {
 		if (master.get_digital(E_CONTROLLER_DIGITAL_R2)) { // Intakes while holding R2 
-			inOutMotor.move_velocity(maxVel / 2.5); // Sets the forward voltage
+			inOutMotor.move_velocity(maxVel); // Sets the forward voltage
 		
 		} else if (master.get_digital(E_CONTROLLER_DIGITAL_R1)) { // Extakes while holding R1
-			inOutMotor.move_velocity(-(maxVel / 2.5)); // Sets the backwards voltage
+			inOutMotor.move_velocity(-(maxVel)); // Sets the backwards voltage
 
 		} else { // If neither buttons are being pressed
 			inOutMotor.move_velocity(0); // Stops the motor
@@ -178,22 +178,20 @@ void clawRotation() {
 		pros::delay(20);
 	 } */
 
-	bool clawUp = false;
+	bool clawUp = true; // Boolean checker to make sure you can't go up when already up, and down when already down
 
 	while (true) {
-		if (master.get_digital(E_CONTROLLER_DIGITAL_UP) && !clawUp) {
-			clawRotationMotor.move_velocity(maxVel / 13);
-			pros::delay(500);
-			clawRotationMotor.move_velocity(0);
+		if (master.get_digital(E_CONTROLLER_DIGITAL_UP) && !clawUp) { // If d-pad button up gets pressed and the claw is not up
+			clawRotationMotor.move_velocity(maxVel / 13); // Sets the speed of the claw rotation motor to make it go up
+			pros::delay(500); // Runs for 500 ms
+			clawRotationMotor.move_velocity(0); // Stops the claw rotation motor
 
-			clawUp = true;
+			clawUp = true; // Changes the boolean value to true so you can't go up again
 
-		} else if (master.get_digital(E_CONTROLLER_DIGITAL_DOWN) && clawUp) {
-			clawRotationMotor.move_velocity(-(maxVel / 13));
-			pros::delay(450);
-			clawRotationMotor.move_velocity(0);
+		} else if (master.get_digital(E_CONTROLLER_DIGITAL_DOWN) && clawUp) { // If d-pad button down gets pressed and the claw is currently up
+			clawRotationMotor.move_velocity(-(maxVel / 15)); // Sets the speed of the calw rotation motor to make it go down
 
-			clawUp = false;
+			clawUp = false; // Changes the boolean value to false so you can't go down again
 		}
 		pros::delay(20);
 	}
