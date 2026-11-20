@@ -1,5 +1,6 @@
 #include "main.h"
 #include "api.h"
+#include <cmath>
 
 using namespace std;
 using namespace pros;
@@ -10,9 +11,11 @@ MotorGroup rightMG({-1, -2});   // Creates a motor group with reversed ports 1 &
 MotorGroup leftMG({18, 19});  // Creates a motor group with forwards port 18 & 19
 
 Motor inOutMotor({-17}); // Creates a motor with port 17 to handle intake/extake
-Motor cascadeLiftMotor({16}); // Creates a motor with port 16 to handle the cascade lift. 
+Motor cascadeLiftMotor({-16}); // Creates a motor with reversed port 16 to handle the cascade lift. 
 Motor clawMotor({10});  // Creates a motor with port 10 to handle the claw
 Motor clawRotationMotor({-9}); // Creates a motor with reversed port 9 to handle the claw
+
+Rotation clawRotationSensor({8}); // Creates a rotation sensor with port 8 to find the claw's angle
 
 int maxVel = 600;
 /**
@@ -131,10 +134,10 @@ void inOut() {
 void cascadeLift() {
 	while (true) {
 		if (master.get_digital(E_CONTROLLER_DIGITAL_X)) { // Moves cascade lift up when holding the x button
-			cascadeLiftMotor.move_velocity(maxVel * 1.5); // Sets velocity of the cascade lift to go up
+			cascadeLiftMotor.move_velocity(maxVel * 3); // Sets velocity of the cascade lift to go up
 
 		} else if (master.get_digital(E_CONTROLLER_DIGITAL_B)) { // Moves cascade lift down when holding the b button
-			cascadeLiftMotor.move_velocity(-(maxVel * 1.5)); // Sets velocity of the cascade lift to go down
+			cascadeLiftMotor.move_velocity(-(maxVel * 3)); // Sets velocity of the cascade lift to go down
 
 		} else {
 			cascadeLiftMotor.move_velocity(0); // Stops the motor
@@ -160,9 +163,9 @@ void claw() {
 	}
 }
 
-// Function to handle the rotation of the claw
-void clawRotation() {
-	/* USE THIS IF WE WANT MANUAL CLAW
+// Legacy function to handle the rotation of the claw if the rotation sensor version breaks
+void clawRotationLegacy() {
+	/* USE THIS IF WE WANT MANUAL CLAW ROTATION
 	
 	while (true) {
 		if (master.get_digital(E_CONTROLLER_DIGITAL_UP)) { // If d-pad button up is being pressed
@@ -178,6 +181,8 @@ void clawRotation() {
 		pros::delay(20);
 	 } */
 
+	
+	// CLAW ROTATIOIN WITH PRESETS
 	bool clawUp = true; // Boolean checker to make sure you can't go up when already up, and down when already down
 
 	while (true) {
@@ -189,13 +194,118 @@ void clawRotation() {
 			clawUp = true; // Changes the boolean value to true so you can't go up again
 
 		} else if (master.get_digital(E_CONTROLLER_DIGITAL_DOWN) && clawUp) { // If d-pad button down gets pressed and the claw is currently up
-			clawRotationMotor.move_velocity(-(maxVel / 15)); // Sets the speed of the calw rotation motor to make it go down
+			clawRotationMotor.move_velocity(-(maxVel / 15)); // Sets the speed of the claw rotation motor to make it go down
 
 			clawUp = false; // Changes the boolean value to false so you can't go down again
+		} else if (master.get_digital(E_CONTROLLER_DIGITAL_A)) { // Third preset to make claw reach the toggle 
+			clawRotationMotor.move_velocity(-(maxVel / 6)); // Moves claw all the way down to confirm it's location
+			pros::delay(150); // Runs for 150 ms
+
+			clawRotationMotor.move_velocity(maxVel / 10); // Moves claw back up to reach the toggle
+			pros::delay(600); // Runs for 700 ms
+
+			clawRotationMotor.move_velocity(0);
+
 		}
 		pros::delay(20);
 	}
 
+}
+
+// Helper function to get the claw's angle in a rounded, whole number 
+int getClawDegrees() {
+	// Try clawRotationSensor.get_position(); as well
+	std::int32_t rawDegrees = clawRotationSensor.get_angle(); // Gets the raw angle as centidegrees
+	double degrees = rawDegrees / 100.0; // Turns the centidegrees into actual degrees
+	return static_cast<int>(std::round(degrees)); // Rounds the degrees to a whole number and casts it to an integer
+}
+
+// Helper funtion that moves the claw to a specific angle
+void moveClawToAngle(int angle) {
+	int currentDegrees = getClawDegrees(); // Gets the current angle
+
+	if (currentDegrees <= angle + 5 && currentDegrees >= angle - 5) {
+		return;
+	}
+
+	if (currentDegrees < angle) { // If the current angle is lower then the target then it needs to go up
+		clawRotationMotor.move_velocity(maxVel / 60); // Sets the motor's velocity to make the claw go up
+		while (getClawDegrees() < angle) { // Loops and waits 20 ms each turn until the claw reaches or is greater than the angle
+			pros::delay(20);
+
+		}
+
+		clawRotationMotor.move_velocity(0); // Stops the motor
+
+	} else if (currentDegrees > angle) { // If the current angle is higher then the target then it needs to go down
+		clawRotationMotor.move_velocity(-(maxVel / 60)); // Sets the motor's velocity to make the claw go down
+		while (getClawDegrees() > angle) { // Loops and waits 20 ms each turn until the claw reaches or is less than th eangle
+			pros::delay(20);
+			
+		}
+
+		clawRotationMotor.move_velocity(0); // Stops the motor
+
+	} // If those two are false, then the claw is already at the specified angle, so it does nothing
+}
+
+// More efficient function to handle the rotation of the claw by using a rotation sensor
+void clawRotation() {
+	int midPosition = 134; // Degree value that determine the specific angle to reach the middle position preset
+	int highPosition = 170; // Degree value that determine the specific angle to reach the top position preset
+
+	moveClawToAngle(midPosition); // Makes claw start at mid position
+
+	int maintainAngle = midPosition; 
+
+	while (true) {
+		int currentDegrees = getClawDegrees(); // Gets the claw's current angle
+
+		if (master.get_digital(E_CONTROLLER_DIGITAL_UP)) { // Checks if the up arrow on the d-pad is being pressed
+			// Causes the claw to go up
+
+			if (currentDegrees <= midPosition + 5 && currentDegrees >= midPosition - 5) { // Checks if the current position of the claw is at the mid position
+				moveClawToAngle(highPosition);
+				maintainAngle = highPosition; // Changes the maintain position to the high position
+
+			} else if (currentDegrees <= highPosition + 5 && currentDegrees >= highPosition - 5) {// Checks if the claw is at the high position
+				// Does nothing so you can't go up when you are already at the max height
+
+			} else { // Claw is at the bottom
+				moveClawToAngle(midPosition);
+				maintainAngle = midPosition; // Changes the maintain position to the mid position
+				
+			}
+
+		} else if (master.get_digital(E_CONTROLLER_DIGITAL_DOWN)) { // Checks if the bottom arrow on the d-pad is being pressed
+			// Causes the claw to go down
+
+			if (currentDegrees <= midPosition + 10 && currentDegrees >= midPosition - 10) { // Checks if the current position of the claw is at the mid position
+				clawRotationMotor.move_velocity(-(maxVel / 15)); // Sets the speed of the claw rotation motor to make it go down indefinitely
+				maintainAngle = 0;  // Changes the maintain position to the bottom position
+				
+
+			} else if (currentDegrees <= highPosition + 5 && currentDegrees >= highPosition - 5) {// Checks if the claw is at the high position
+				moveClawToAngle(midPosition);
+				maintainAngle = midPosition; // Changes the maintain position to the mid position
+
+			} else { // Claw is at the bottom
+				// Does nothing so you can't go lower when you are already at the lowest
+			
+			}
+		} else { // Nothing pressed, maintain position
+			if (maintainAngle != 0) { // Checks if the maintain angle is at high position or low position
+				moveClawToAngle(maintainAngle); // Calls move claw to angle to make it maintain the angle
+
+			} else { // If the maintain position is to go down
+				clawRotationMotor.move_velocity(-(maxVel / 15)); // Sets the speed of the claw rotation motor to make it go down indefinitely
+			}
+			
+		}
+
+		pros::lcd::print(1, "Current Degrees: %d", currentDegrees);	// Prints the claw's current angle for debugging
+		pros::delay(20);
+	}
 }
 
 /**
