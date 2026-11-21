@@ -251,12 +251,13 @@ void moveClawToAngle(int angle) {
 
 // More efficient function to handle the rotation of the claw by using a rotation sensor
 void clawRotation() {
-	int midPosition = 134; // Degree value that determine the specific angle to reach the middle position preset
-	int highPosition = 170; // Degree value that determine the specific angle to reach the top position preset
+	int midPosition = 134; // Degree value that determines the specific angle to reach the middle position preset
+	int highPosition = 170; // Degree value that determines the specific angle to reach the top position preset
+	int lowPosition = 53; // Degree value that determines the specific angle to reach the bottom position preset
 
 	moveClawToAngle(midPosition); // Makes claw start at mid position
 
-	int maintainAngle = midPosition; 
+	int maintainAngle = midPosition; // Variable to make the claw maintain its location, starts at mid position since the claw will start at the mid position
 
 	while (true) {
 		int currentDegrees = getClawDegrees(); // Gets the claw's current angle
@@ -285,13 +286,17 @@ void clawRotation() {
 				maintainAngle = 0;  // Changes the maintain position to the bottom position
 				
 
-			} else if (currentDegrees <= highPosition + 5 && currentDegrees >= highPosition - 5) {// Checks if the claw is at the high position
+			} else if (currentDegrees <= highPosition + 5 && currentDegrees >= highPosition - 5) { // Checks if the claw is at the high position
 				moveClawToAngle(midPosition);
 				maintainAngle = midPosition; // Changes the maintain position to the mid position
 
-			} else { // Claw is at the bottom
+			} else  if (currentDegrees <= lowPosition + 5 && currentDegrees >= lowPosition - 5) { // Claw is at the bottom
 				// Does nothing so you can't go lower when you are already at the lowest
+				maintainAngle = 0; // Changes the maintain position so it stays down
 			
+			} else {
+				clawRotationMotor.move_velocity(-(maxVel / 15)); // Makes it go down for safety
+				maintainAngle = 0;
 			}
 		} else { // Nothing pressed, maintain position
 			if (maintainAngle != 0) { // Checks if the maintain angle is at high position or low position
